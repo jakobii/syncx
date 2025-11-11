@@ -13,7 +13,7 @@ func TestLocker(t *testing.T) {
 	defer l.Unlock()
 }
 
-func TestMutexWaitLock(t *testing.T) {
+func TestMutexLockContext(t *testing.T) {
 	var mu Mutex
 	mu.Acquire() <- struct{}{}
 	defer mu.Unlock()
@@ -56,7 +56,7 @@ func TestMutexTryLock_already_locked(t *testing.T) {
 
 func TestMutexLockCtx(t *testing.T) {
 	var mu Mutex
-	mu.WaitLock(t.Context())
+	mu.LockContext(t.Context())
 	defer mu.Unlock()
 	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
@@ -68,7 +68,7 @@ func TestMutexLockCtx_cancels(t *testing.T) {
 	mu.state() <- struct{}{}
 	ctx, cancel := context.WithCancel(t.Context())
 	go cancel()
-	if err := mu.WaitLock(ctx); !errors.Is(err, context.Canceled) {
+	if err := mu.LockContext(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatal("did not receive context cancel error")
 	}
 }
