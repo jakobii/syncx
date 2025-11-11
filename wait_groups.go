@@ -10,11 +10,8 @@ import (
 // goroutines to finish. It is a drop-in replacement for [sync.WaitGroup] with
 // additional methods for enhanced functionality.
 //
-// A WaitGroup must not be copied after first use.
-//
-// In addition to the standard Add, Done, and Wait methods, WaitGroup provides:
-//   - Await: returns a channel that can be used in select statements
-//   - WaitContext: waits with context cancellation support
+// The zero value of WaitGroup is ready to use without initialization. A
+// WaitGroup must not be copied after first use.
 //
 // Usage example:
 //
