@@ -1,0 +1,31 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 'stable'
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run tests
+      run: go test -cover -v -test.v ./...
+
+    - name: Run tests with race detector (10 iterations)
+      run: go test -race -count=10 -v ./...
