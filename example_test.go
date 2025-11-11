@@ -32,8 +32,8 @@ func ExampleMutex() {
 		return
 	}
 
-	// WaitLock
-	if err := mu.WaitLock(context.Background()); err != nil {
+	// LockContext
+	if err := mu.LockContext(context.Background()); err != nil {
 		return
 	}
 	fmt.Println("Which means it can easily respect contexts.")
@@ -46,7 +46,7 @@ func ExampleMutex() {
 	// Which means it can easily respect contexts.
 }
 
-func ExampleMutex_WaitLock() {
+func ExampleMutex_LockContext() {
 	var mu syncx.Mutex
 
 	// Imagine some other process has the lock.
@@ -59,7 +59,7 @@ func ExampleMutex_WaitLock() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
 
-	if err := mu.WaitLock(ctx); err != nil {
+	if err := mu.LockContext(ctx); err != nil {
 		fmt.Println("Failed to acquire lock:", err)
 		return
 	}

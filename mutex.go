@@ -65,8 +65,8 @@ func (m *Mutex) TryLock() bool {
 	}
 }
 
-// WaitLock locks m or returns ctx's error.
-func (m *Mutex) WaitLock(ctx context.Context) error {
+// LockContext locks m or returns ctx's error.
+func (m *Mutex) LockContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

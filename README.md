@@ -32,7 +32,7 @@ For context-aware locking:
 
 ```go
 var mu syncx.Mutex
-if err := mu.WaitLock(ctx); err != nil {
+if err := mu.LockContext(ctx); err != nil {
 	return fmt.Errorf("context ended before work started: %w", err)
 }
 defer mu.Unlock()
