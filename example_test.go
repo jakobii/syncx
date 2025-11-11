@@ -128,13 +128,13 @@ func ExampleWaitGroup_WaitContext() {
 
 	// Start a long-running task
 	wg.Go(func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(time.Hour)
 		fmt.Println("Long task completed")
 	})
 
 	// Wait with a short timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	go cancel()
 
 	if err := wg.WaitContext(ctx); err != nil {
 		fmt.Println("Waiting cancelled:", err)
@@ -143,5 +143,5 @@ func ExampleWaitGroup_WaitContext() {
 	fmt.Println("All tasks completed")
 
 	// Output:
-	// Waiting cancelled: context deadline exceeded
+	// Waiting cancelled: context canceled
 }
