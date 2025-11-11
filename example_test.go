@@ -53,9 +53,7 @@ func ExampleMutex_LockContext() {
 	mu.Lock()
 
 	// Attempt to acquire the lock with a context. This timeout is short for the
-	// sake of the completion of the example. In practice this might be a larger
-	// duration for detecting deadlocks, or a context tied to some other process
-	// cancellation.
+	// sake of the completion of the example.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
 
@@ -86,4 +84,64 @@ func ExampleMutex_Acquire() {
 
 	// Output:
 	// Successfully acquired lock.
+}
+
+func ExampleWaitGroup() {
+	// Works like sync.WaitGroup.
+	var wg syncx.WaitGroup
+	for range 3 {
+		wg.Go(func() {
+			fmt.Println("Worker completed")
+		})
+	}
+	wg.Wait()
+	// Output:
+	// Worker completed
+	// Worker completed
+	// Worker completed
+}
+
+func ExampleWaitGroup_Await() {
+	var wg syncx.WaitGroup
+
+	// Start a worker
+	wg.Go(func() {
+		time.Sleep(10 * time.Millisecond)
+		fmt.Println("Work completed")
+	})
+
+	// Use Await in a select statement
+	select {
+	case <-wg.Await():
+		fmt.Println("All work finished")
+	case <-time.After(time.Second * 10):
+		fmt.Println("Timeout waiting for work")
+	}
+
+	// Output:
+	// Work completed
+	// All work finished
+}
+
+func ExampleWaitGroup_WaitContext() {
+	var wg syncx.WaitGroup
+
+	// Start a long-running task
+	wg.Go(func() {
+		time.Sleep(100 * time.Millisecond)
+		fmt.Println("Long task completed")
+	})
+
+	// Wait with a short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := wg.WaitContext(ctx); err != nil {
+		fmt.Println("Waiting cancelled:", err)
+		return
+	}
+	fmt.Println("All tasks completed")
+
+	// Output:
+	// Waiting cancelled: context deadline exceeded
 }
