@@ -27,7 +27,6 @@ func (v *Value[T]) Load() (val T) {
 }
 
 func (v *Value[T]) Store(val T) {
-	v.init()
 	v.V.Store(val)
 }
 
