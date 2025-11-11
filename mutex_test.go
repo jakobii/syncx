@@ -97,7 +97,7 @@ func TestMutexLock_race(t *testing.T) {
 	n := 100
 	var wg sync.WaitGroup
 	wg.Add(n)
-	for j := 0; j < n; j++ {
+	for range n {
 		go func() {
 			defer wg.Done()
 			mu.Lock()
