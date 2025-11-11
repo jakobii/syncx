@@ -12,14 +12,15 @@ go get github.com/jakobii/syncx
 
 ## Features
 
-- 🔄 **Drop-in replacement** for `sync.Mutex`
-- ⏰ **Context-aware locking** with `WaitLock(ctx)`
-- 🎯 **Channel-based API** that works with `select` statements
-- 👀 **Zero dependencies** beyond Go standard library
+- 📦 **Drop-in replacement** for `sync.Mutex`
+- 👀 **Channel-based API** that works with `select` statements
+- 🫡 **Zero dependencies** beyond Go standard library
 
 ## Usage
 
-The `syncx.Mutex` can work just like `sync.Mutex`.
+The standard library's `sync.Mutex` is excellent for most use cases and provides the foundation for Go's concurrency model. However, there are scenarios where additional capabilities become valuable. When coordinating longer-running operations or building systems that need to respect contexts and timeouts, the ability to cancel lock acquisition can be essential.
+
+Use `syncx.Mutex` as a drop-in replacement for `sync.Mutex` and it satisfies the `sync.Locker` interface:
 
 ```go
 var mu syncx.Mutex
@@ -27,40 +28,27 @@ mu.Lock()
 defer mu.Unlock()
 ```
 
-The standard library's `sync.Mutex` does not offer a way to cancel its `Lock()`
-method while it is blocking to acquire the lock. This is usually fine when the
-mutex is guarding a resource that does not take much time to access, like a
-struct field. But when synchronizing longer-running processes, the need to
-cancel work is frequently an issue.
-
-If all you need is to cancel acquiring a lock with a context, this module's
-`syncx.Mutex` has a convenient method for this.
+For context-aware locking:
 
 ```go
 var mu syncx.Mutex
-func Work(ctx context.Context) error {
-	if err := mu.WaitLock(ctx); err != nil {
-		return fmt.Errorf("context ended before work started: %w", err)
-	}
-	defer mu.Unlock()
-	fmt.Println("acquired lock, now we can work")
+if err := mu.WaitLock(ctx); err != nil {
+	return fmt.Errorf("context ended before work started: %w", err)
 }
+defer mu.Unlock()
+fmt.Println("acquired lock")
 ```
 
-The `syncx.Mutex` can also work with Go's `select` statement. Sending
-`struct{}{}` is a common way of signaling, and here we use it with `Acquire()`
-to acquire the lock.
+For integration with `select` statements:
 
 ```go
 var mu syncx.Mutex
-func MyWork(ctx context.Context) error {
-	select {
-	case <-time.After(someMaxDuration):
-		return errTimeout
-	case mu.Acquire() <- struct{}{}:
-		defer mu.Unlock()
-		fmt.Println("acquired lock")
-	}
+select {
+case mu.Acquire() <- syncx.Lock:
+	defer mu.Unlock()
+	fmt.Println("acquired lock")
+case <-time.After(someDuration):
+	return errTimeout
 }
 ```
 

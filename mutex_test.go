@@ -7,6 +7,12 @@ import (
 	"testing"
 )
 
+func TestLocker(t *testing.T) {
+	var l sync.Locker = &Mutex{}
+	l.Lock()
+	defer l.Unlock()
+}
+
 func TestMutexWaitLock(t *testing.T) {
 	var mu Mutex
 	mu.Acquire() <- struct{}{}

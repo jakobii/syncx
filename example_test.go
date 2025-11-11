@@ -8,7 +8,7 @@ import (
 	"github.com/jakobii/syncx"
 )
 
-// Demonstates a few ways that Mutex can be used.
+// Demonstrates a few ways that Mutex can be used.
 func ExampleMutex() {
 	var mu syncx.Mutex
 
@@ -55,7 +55,7 @@ func ExampleMutex_WaitLock() {
 	// Attempt to acquire the lock with a context. This timeout is short for the
 	// sake of the completion of the example. In practice this might be a larger
 	// duration for detecting deadlocks, or a context tied to some other process
-	// cancelation.
+	// cancellation.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
 

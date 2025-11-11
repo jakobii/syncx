@@ -5,18 +5,28 @@ import (
 	"sync"
 )
 
+// Lock is a small helper to make calling struct{}{} a bit less noisy and a
+// tiny bit more readable.
+//
+//	mu.Acquire() <- syncx.Lock
+//
+// same as:
+//
+//	mu.Acquire() <- struct{}{}
+var Lock struct{}
+
 // Mutex is a drop-in replacement for the standard library's [sync.Mutex]. It
 // offers the ability to cancel acquiring a lock by making use of Go's select
 // statement. The zero value is safe to use. Satisfies [sync.Locker].
 type Mutex struct {
-	// x must be a buffered channel with a length of 1. It is considered
-	// locked when it has a length of 1. It is considered unlocked when it has a
-	// length of 0.
+	// x must be a buffered channel with a length of 1. It is considered locked
+	// when it has a length of 1. It is considered unlocked when it has a length
+	// of 0.
 	x    chan struct{}
 	once sync.Once
 }
 
-// Unlocks m. Panics if m is not locked. Calling Unlock on an unlocked mutex
+// Unlock unlocks m. Panics if m is not locked. Calling Unlock on an unlocked mutex
 // usually indicates a race condition.
 func (m *Mutex) Unlock() {
 	select {
@@ -30,7 +40,7 @@ func (m *Mutex) Unlock() {
 //
 //	select {
 //	case mu.Acquire() <- syncx.Lock:
-//	case <-time.After(time.Minute):
+//	case <-time.After(someDuration):
 //	}
 func (m *Mutex) Acquire() chan<- struct{} {
 	return m.state()
@@ -65,12 +75,10 @@ func (m *Mutex) WaitLock(ctx context.Context) error {
 	}
 }
 
-// Get the raw chan. Init it if not done so yet.
+// state gets the raw chan. Initializes it if not done so yet.
 func (m *Mutex) state() chan struct{} {
 	m.once.Do(func() {
 		m.x = make(chan struct{}, 1)
 	})
 	return m.x
 }
-
-var Lock struct{}
