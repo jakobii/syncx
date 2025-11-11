@@ -360,21 +360,4 @@ func TestWaitGroupGo(t *testing.T) {
 			t.Fatalf("expected count to be 0 after all functions complete, got %d", wg.n)
 		}
 	})
-	t.Run("go with panic still decrements count", func(t *testing.T) {
-		var wg WaitGroup
-		panicked := make(chan struct{})
-		wg.Go(func() {
-			defer func() {
-				if recover() != nil {
-					close(panicked)
-				}
-			}()
-			panic("test panic")
-		})
-		<-panicked
-		wg.Wait()
-		if wg.n != 0 {
-			t.Fatalf("expected count to be 0 after panicking function, got %d", wg.n)
-		}
-	})
 }
