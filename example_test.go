@@ -76,9 +76,8 @@ func ExampleMutex_Acquire() {
 	case <-time.After(time.Millisecond):
 		fmt.Println("Failed to acquire lock: timeout")
 		return
-	case mu.Acquire() <- struct{}{}:
+	case mu.Acquire() <- syncx.Lock:
 		defer mu.Unlock()
-		// ..do things while holding the lock...
 		fmt.Println("Successfully acquired lock.")
 	}
 

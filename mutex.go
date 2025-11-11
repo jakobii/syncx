@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Lock is a small helper to make calling struct{}{} a bit less noisy and a
+// Lock is a small helper to make calling `struct{}{}` a bit less noisy and a
 // tiny bit more readable.
 //
 //	mu.Acquire() <- syncx.Lock
