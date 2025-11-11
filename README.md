@@ -12,13 +12,13 @@ go get github.com/jakobii/syncx
 
 ## Features
 
-- 📦 **Drop-in replacement** for `sync.Mutex`, `sync.WaitGroup`
+- 📦 **Drop-in replacements** for `sync.Mutex`, `sync.WaitGroup`
 - 👀 **Channel-based API** that works with `select` statements
 - 🫡 **Zero dependencies** beyond Go standard library
 
 ## Usage
 
-The standard library's `sync` package is excellent for most use cases and provides the foundation for Go's concurrency model. However, there are scenarios where additional capabilities become valuable. When coordinating longer-running operations or building systems that need to respect contexts and timeouts, the ability to cancel blocking operations can be essential.
+The standard library's `sync` package is excellent for most use cases and provides the foundation for Go's concurrency model. However, there are scenarios where additional capabilities become valuable. When coordinating long-running operations or building systems that need to respect contexts and timeouts, the ability to cancel blocking operations becomes essential.
 
 For integration with `select` statements:
 
