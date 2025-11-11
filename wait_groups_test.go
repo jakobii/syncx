@@ -10,12 +10,12 @@ import (
 func TestWaitGroupAdd(t *testing.T) {
 	t.Run("add positive delta when count is zero", func(t *testing.T) {
 		var wg WaitGroup
-		if wg.counter != 0 {
-			t.Fatalf("expected initial count to be 0, got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected initial count to be 0, got %d", wg.n)
 		}
 		wg.Add(1)
-		if wg.counter != 1 {
-			t.Fatalf("expected count to be 1 after Add(1), got %d", wg.counter)
+		if wg.n != 1 {
+			t.Fatalf("expected count to be 1 after Add(1), got %d", wg.n)
 		}
 		ch := wg.ch.Load()
 		if ch == nil {
@@ -27,8 +27,8 @@ func TestWaitGroupAdd(t *testing.T) {
 		wg.Add(1)
 		originalCh := wg.ch.Load()
 		wg.Add(2)
-		if wg.counter != 3 {
-			t.Fatalf("expected count to be 3 after Add(1) then Add(2), got %d", wg.counter)
+		if wg.n != 3 {
+			t.Fatalf("expected count to be 3 after Add(1) then Add(2), got %d", wg.n)
 		}
 		currentCh := wg.ch.Load()
 		if currentCh != originalCh {
@@ -39,15 +39,15 @@ func TestWaitGroupAdd(t *testing.T) {
 		var wg WaitGroup
 		wg.Add(5)
 		wg.Add(-2)
-		if wg.counter != 3 {
-			t.Fatalf("expected count to be 3 after Add(5) then Add(-2), got %d", wg.counter)
+		if wg.n != 3 {
+			t.Fatalf("expected count to be 3 after Add(5) then Add(-2), got %d", wg.n)
 		}
 	})
 	t.Run("add zero delta", func(t *testing.T) {
 		var wg WaitGroup
 		wg.Add(0)
-		if wg.counter != 0 {
-			t.Fatalf("expected count to remain 0 after Add(0), got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to remain 0 after Add(0), got %d", wg.n)
 		}
 		ch := wg.ch.Load()
 		if ch != nil {
@@ -59,8 +59,8 @@ func TestWaitGroupAdd(t *testing.T) {
 		wg.Add(3)
 		originalCh := wg.ch.Load()
 		wg.Add(0)
-		if wg.counter != 3 {
-			t.Fatalf("expected count to remain 3 after Add(0), got %d", wg.counter)
+		if wg.n != 3 {
+			t.Fatalf("expected count to remain 3 after Add(0), got %d", wg.n)
 		}
 		currentCh := wg.ch.Load()
 		if currentCh != originalCh {
@@ -77,8 +77,8 @@ func TestWaitGroupAdd(t *testing.T) {
 			})
 		}
 		testWg.Wait()
-		if wg.counter != n {
-			t.Fatalf("expected count to be %d after concurrent adds, got %d", n, wg.counter)
+		if wg.n != n {
+			t.Fatalf("expected count to be %d after concurrent adds, got %d", n, wg.n)
 		}
 	})
 }
@@ -88,8 +88,8 @@ func TestWaitGroupDone(t *testing.T) {
 		var wg WaitGroup
 		wg.Add(3)
 		wg.Done()
-		if wg.counter != 2 {
-			t.Fatalf("expected count to be 2 after Done(), got %d", wg.counter)
+		if wg.n != 2 {
+			t.Fatalf("expected count to be 2 after Done(), got %d", wg.n)
 		}
 	})
 	t.Run("done to zero closes channel", func(t *testing.T) {
@@ -97,8 +97,8 @@ func TestWaitGroupDone(t *testing.T) {
 		wg.Add(1)
 		ch := wg.ch.Load()
 		wg.Done()
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after Done(), got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after Done(), got %d", wg.n)
 		}
 		select {
 		case <-ch:
@@ -112,8 +112,8 @@ func TestWaitGroupDone(t *testing.T) {
 			if v := recover(); v == nil {
 				t.Fatal("expected panic when calling Done() on zero count")
 			}
-			if wg.counter != 0 {
-				t.Fatalf("expected count to remain 0 after panic, got %d", wg.counter)
+			if wg.n != 0 {
+				t.Fatalf("expected count to remain 0 after panic, got %d", wg.n)
 			}
 		}()
 		wg.Done()
@@ -136,12 +136,12 @@ func TestWaitGroupDone(t *testing.T) {
 		var wg WaitGroup
 		wg.Add(2)
 		wg.Done() // Should not panic, counter goes from 2 to 1
-		if wg.counter != 1 {
-			t.Fatalf("expected count to be 1 after Done(), got %d", wg.counter)
+		if wg.n != 1 {
+			t.Fatalf("expected count to be 1 after Done(), got %d", wg.n)
 		}
 		wg.Done() // Should not panic, counter goes from 1 to 0
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after second Done(), got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after second Done(), got %d", wg.n)
 		}
 	})
 	t.Run("multiple done calls", func(t *testing.T) {
@@ -149,12 +149,12 @@ func TestWaitGroupDone(t *testing.T) {
 		wg.Add(3)
 		wg.Done()
 		wg.Done()
-		if wg.counter != 1 {
-			t.Fatalf("expected count to be 1 after two Done() calls, got %d", wg.counter)
+		if wg.n != 1 {
+			t.Fatalf("expected count to be 1 after two Done() calls, got %d", wg.n)
 		}
 		wg.Done()
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after third Done() call, got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after third Done() call, got %d", wg.n)
 		}
 	})
 	t.Run("concurrent done operations", func(t *testing.T) {
@@ -169,8 +169,8 @@ func TestWaitGroupDone(t *testing.T) {
 			})
 		}
 		testWg.Wait()
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after all Done() calls, got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after all Done() calls, got %d", wg.n)
 		}
 		select {
 		case <-ch:
@@ -339,8 +339,8 @@ func TestWaitGroupGo(t *testing.T) {
 		})
 		<-done
 		wg.Wait()
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after function completes, got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after function completes, got %d", wg.n)
 		}
 	})
 	t.Run("multiple go calls", func(t *testing.T) {
@@ -356,8 +356,8 @@ func TestWaitGroupGo(t *testing.T) {
 			<-counter
 		}
 		wg.Wait()
-		if wg.counter != 0 {
-			t.Fatalf("expected count to be 0 after all functions complete, got %d", wg.counter)
+		if wg.n != 0 {
+			t.Fatalf("expected count to be 0 after all functions complete, got %d", wg.n)
 		}
 	})
 }

@@ -25,16 +25,16 @@ import (
 //	    fmt.Println("work no longer needed")
 //	}
 type WaitGroup struct {
-	mu      Mutex
-	ch      gatomic.Value[chan struct{}]
-	counter int
+	mu Mutex
+	ch gatomic.Value[chan struct{}]
+	n  int
 }
 
 // Add adds delta to the WaitGroup counter.
 func (wg *WaitGroup) Add(delta int) {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
-	currentCount := wg.counter
+	currentCount := wg.n
 	// no-op.
 	if delta == 0 {
 		return
@@ -48,9 +48,9 @@ func (wg *WaitGroup) Add(delta int) {
 		wg.ch.Store(make(chan struct{}))
 	}
 	// mutate count.
-	wg.counter += delta
+	wg.n += delta
 	// signal group finished.
-	if wg.counter == 0 {
+	if wg.n == 0 {
 		ch := wg.ch.Load()
 		close(ch)
 	}
@@ -99,7 +99,7 @@ func (wg *WaitGroup) Wait() {
 func (wg *WaitGroup) Await() <-chan struct{} {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
-	if wg.counter == 0 {
+	if wg.n == 0 {
 		ch := make(chan struct{})
 		close(ch)
 		return ch
