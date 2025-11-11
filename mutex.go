@@ -47,12 +47,13 @@ func (m *Mutex) Acquire() chan<- struct{} {
 }
 
 // Lock locks m. If the lock is already in use, the calling goroutine blocks
-// until the mutex is available.
+// until the mutex is available. Short for calling [Mutex.Acquire].
 func (m *Mutex) Lock() {
 	m.Acquire() <- Lock
 }
 
-// TryLock tries to lock m and reports whether it succeeded.
+// TryLock tries to lock m and reports whether it succeeded. Short for calling
+// [Mutex.Acquire].
 //
 // Note that while correct uses of TryLock do exist, they are rare, and use of
 // TryLock is often a sign of a deeper problem in a particular use of mutexes.
@@ -65,7 +66,8 @@ func (m *Mutex) TryLock() bool {
 	}
 }
 
-// LockContext locks m or returns ctx's error.
+// LockContext locks m or returns ctx's error. Short for calling
+// [Mutex.Acquire].
 func (m *Mutex) LockContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():

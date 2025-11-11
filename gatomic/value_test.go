@@ -1,10 +1,37 @@
 package gatomic_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/jakobii/syncx/gatomic"
 )
+
+// ExampleValue demonstrates the basic usage of [Value] with type safety.
+func ExampleValue() {
+	var status gatomic.Value[string]
+	fmt.Printf("status zero value is: %q\n", status.Load())
+
+	// Store a value
+	status.Store("initializing")
+	fmt.Printf("status updated to: %q\n", status.Load())
+
+	// Compare and swap
+	swapped := status.CompareAndSwap("initializing", "running")
+	if swapped {
+		fmt.Printf("status compared and swapped to: %q\n", status.Load())
+	}
+
+	// Swap and get old value
+	oldVal := status.Swap("completed")
+	fmt.Printf("status swapped from: %q to: %q\n", oldVal, status.Load())
+
+	// Output:
+	// status zero value is: ""
+	// status updated to: "initializing"
+	// status compared and swapped to: "running"
+	// status swapped from: "running" to: "completed"
+}
 
 func TestValueCompareAndSwap(t *testing.T) {
 	var v gatomic.Value[int]
