@@ -1,4 +1,4 @@
-package mutex
+package syncx
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 
 func TestMutexWaitLock(t *testing.T) {
 	var mu Mutex
-	mu.SendLock() <- struct{}{}
+	mu.Acquire() <- struct{}{}
 	defer mu.Unlock()
-	if len(mu.state) != 1 {
+	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
 	}
 }
@@ -20,7 +20,7 @@ func TestMutexLock(t *testing.T) {
 	var mu Mutex
 	mu.Lock()
 	defer mu.Unlock()
-	if len(mu.state) != 1 {
+	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
 	}
 }
@@ -31,50 +31,47 @@ func TestMutexTryLock(t *testing.T) {
 		t.Fatal("failed to obtain lock")
 	}
 	defer mu.Unlock()
-	if len(mu.state) != 1 {
+	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
 	}
 }
 
 func TestMutexTryLock_already_locked(t *testing.T) {
 	var mu Mutex
-	mu.init()
-	mu.state <- struct{}{}
+	mu.state() <- struct{}{}
 	if mu.TryLock() {
 		t.Fatal("obtain lock")
 	}
 	defer mu.Unlock()
-	if len(mu.state) != 1 {
+	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
 	}
 }
 
 func TestMutexLockCtx(t *testing.T) {
 	var mu Mutex
-	mu.GetLock(t.Context())
+	mu.WaitLock(t.Context())
 	defer mu.Unlock()
-	if len(mu.state) != 1 {
+	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
 	}
 }
 
 func TestMutexLockCtx_cancels(t *testing.T) {
 	var mu Mutex
-	mu.init()
-	mu.state <- struct{}{}
+	mu.state() <- struct{}{}
 	ctx, cancel := context.WithCancel(t.Context())
 	go cancel()
-	if err := mu.GetLock(ctx); !errors.Is(err, context.Canceled) {
+	if err := mu.WaitLock(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatal("did not receive context cancel error")
 	}
 }
 
 func TestMutexUnlock(t *testing.T) {
 	var mu Mutex
-	mu.init()
-	mu.state <- struct{}{}
+	mu.state() <- struct{}{}
 	mu.Unlock()
-	if len(mu.state) != 0 {
+	if len(mu.state()) != 0 {
 		t.Fatal("failed to set unlock state")
 	}
 }
@@ -85,7 +82,7 @@ func TestMutexUnlock_panics_when_already_unlocked(t *testing.T) {
 		if v := recover(); v == nil {
 			t.Fatal("failed to panic when unlocking an unlocked mutex")
 		}
-		if len(mu.state) != 0 {
+		if len(mu.state()) != 0 {
 			t.Fatal("mutated state of unlocked mutex")
 		}
 	}()
@@ -100,7 +97,7 @@ func TestMutexLock_race(t *testing.T) {
 	n := 100
 	var wg sync.WaitGroup
 	wg.Add(n)
-	for range n {
+	for j := 0; j < n; j++ {
 		go func() {
 			defer wg.Done()
 			mu.Lock()
