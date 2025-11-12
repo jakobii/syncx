@@ -43,7 +43,7 @@ func (wg *WaitGroup) Add(delta int) {
 	if currentCount+delta < 0 {
 		panic("negative WaitGroup counter")
 	}
-	// init wait ch on first addition to the group.
+	// init Await ch on first addition to the group.
 	if currentCount == 0 {
 		wg.ch.Store(make(chan struct{}))
 	}
