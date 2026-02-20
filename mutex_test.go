@@ -56,7 +56,9 @@ func TestMutexTryLock_already_locked(t *testing.T) {
 
 func TestMutexLockCtx(t *testing.T) {
 	var mu Mutex
-	mu.LockContext(t.Context())
+	if err := mu.LockContext(t.Context()); err != nil {
+		t.Fatal("failed to obtain lock")
+	}
 	defer mu.Unlock()
 	if len(mu.state()) != 1 {
 		t.Fatal("failed to set lock state")
