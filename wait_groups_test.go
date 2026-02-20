@@ -317,6 +317,7 @@ func TestWaitGroupWaitContext(t *testing.T) {
 		}()
 		cancel()
 		if err := <-errs; !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context.Canceled error when context is cancelled, got %v", err)
 		}
 	})
 }
