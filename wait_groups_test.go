@@ -101,7 +101,7 @@ func TestWaitGroupDone(t *testing.T) {
 			t.Fatalf("expected count to be 0 after Done(), got %d", wg.n)
 		}
 		select {
-		case <-ch:
+		case <-*ch:
 		default:
 			t.Fatal("expected channel to be closed when count reaches zero")
 		}
@@ -173,7 +173,7 @@ func TestWaitGroupDone(t *testing.T) {
 			t.Fatalf("expected count to be 0 after all Done() calls, got %d", wg.n)
 		}
 		select {
-		case <-ch:
+		case <-*ch:
 		default:
 		}
 	})

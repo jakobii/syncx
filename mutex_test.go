@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
+	"time"
 )
 
 func TestLocker(t *testing.T) {
@@ -104,17 +107,56 @@ func TestMutexLock_race(t *testing.T) {
 	var i int // some non atomic value to mutate.
 	n := 100
 	var wg sync.WaitGroup
-	wg.Add(n)
 	for range n {
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			mu.Lock()
 			defer mu.Unlock()
 			i++
-		}()
+		})
 	}
 	wg.Wait()
 	if i != n {
 		t.Fatalf("expected %d locks, got %d", n, i)
+	}
+}
+
+func TestMutexAcquire_returnsSameChannel(t *testing.T) {
+	var mu Mutex
+	ch1 := mu.Acquire()
+	ch2 := mu.Acquire()
+	if ch1 != ch2 {
+		t.Fatal("expected Acquire to return same channel instance")
+	}
+}
+
+func TestMutexLockContext_deadlineExceeded(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var mu Mutex
+		mu.Lock()
+		defer mu.Unlock()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+		defer cancel()
+		synctest.Wait()
+		if err := mu.LockContext(ctx); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected context.DeadlineExceeded, got %v", err)
+		}
+	})
+}
+
+func TestMutexTryLock_concurrent(t *testing.T) {
+	var mu Mutex
+	var wg sync.WaitGroup
+	var successes int64
+	for range 100 {
+		wg.Go(func() {
+			if mu.TryLock() {
+				atomic.AddInt64(&successes, 1)
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	if successes < 1 {
+		t.Fatal("expected at least one successful TryLock in concurrent scenario")
 	}
 }

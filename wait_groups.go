@@ -2,8 +2,7 @@ package syncx
 
 import (
 	"context"
-
-	"github.com/jakobii/syncx/gatomic"
+	"sync/atomic"
 )
 
 // WaitGroup is a synchronization primitive that waits for a collection of
@@ -26,7 +25,7 @@ import (
 //	}
 type WaitGroup struct {
 	mu Mutex
-	ch gatomic.Value[chan struct{}]
+	ch atomic.Pointer[chan struct{}]
 	n  int
 }
 
@@ -45,14 +44,15 @@ func (wg *WaitGroup) Add(delta int) {
 	}
 	// init wait ch on first addition to the group.
 	if currentCount == 0 {
-		wg.ch.Store(make(chan struct{}))
+		ch := make(chan struct{})
+		wg.ch.Store(&ch)
 	}
 	// mutate count.
 	wg.n += delta
 	// signal group finished.
 	if wg.n == 0 {
 		ch := wg.ch.Load()
-		close(ch)
+		close(*ch)
 	}
 }
 
@@ -79,23 +79,28 @@ func (wg *WaitGroup) Wait() {
 }
 
 // Await returns a channel that will be closed when the [WaitGroup] counter
-// reaches zero. This allows the wait operation to be used in select statements
-// for non-blocking waits or in combination with other channels.
+// reaches zero. This allows the operation to be used in select statements for
+// non-blocking waits or in combination with other channels.
 //
 // The returned channel should not be closed by the caller. The channel is
 // managed internally and will be closed automatically when all goroutines have
 // finished.
 //
 // If the counter is already zero when Await is called, it returns a closed
-// channel that will immediately unblock any receive operation.
+// channel that will immediately unblock any receive operation. Don't store the
+// returned channel across multiple calls to Await. Generally, you should
+// receive from the Await method directly, rather than storing the channel in a
+// variable to use later.
 //
-// Call [WaitGroup.Add] before calling [WaitGroup.Await]:
-//
-//	wg.Add(1)
-//	go func() {
-//	    defer wg.Done()
-//	}()
-//	<-wg.Await()
+//	wg.Go(func() {
+//	    time.Sleep(time.Second)
+//	})
+//	select {
+//	case <-wg.Await():
+//	    fmt.Println("all work completed")
+//	case <-time.After(time.Minute):
+//	    fmt.Println("work taking too long")
+//	}
 func (wg *WaitGroup) Await() <-chan struct{} {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
@@ -104,7 +109,7 @@ func (wg *WaitGroup) Await() <-chan struct{} {
 		close(ch)
 		return ch
 	}
-	return wg.ch.Load()
+	return *wg.ch.Load()
 }
 
 // WaitContext waits for the WaitGroup counter to reach zero or for the context
