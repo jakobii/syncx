@@ -31,13 +31,12 @@ type WaitGroup struct {
 
 // Add adds delta to the WaitGroup counter.
 func (wg *WaitGroup) Add(delta int) {
+	if delta == 0 {
+		return // no-op.
+	}
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
 	currentCount := wg.n
-	// no-op.
-	if delta == 0 {
-		return
-	}
 	// detect negative counter.
 	if currentCount+delta < 0 {
 		panic("negative WaitGroup counter")

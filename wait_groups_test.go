@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
+	"time"
 )
 
 func TestWaitGroupAdd(t *testing.T) {
@@ -359,6 +362,162 @@ func TestWaitGroupGo(t *testing.T) {
 		wg.Wait()
 		if wg.n != 0 {
 			t.Fatalf("expected count to be 0 after all functions complete, got %d", wg.n)
+		}
+	})
+}
+
+func TestWaitGroupMultipleCycles(t *testing.T) {
+	t.Run("multiple add done cycles", func(t *testing.T) {
+		var wg WaitGroup
+		for cycle := range 3 {
+			wg.Add(2)
+			wg.Done()
+			wg.Done()
+			if wg.n != 0 {
+				t.Fatalf("cycle %d: expected count to be 0, got %d", cycle, wg.n)
+			}
+		}
+	})
+	t.Run("multiple cycles with await", func(t *testing.T) {
+		var wg WaitGroup
+		for cycle := range 3 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+			}()
+			<-wg.Await()
+			if wg.n != 0 {
+				t.Fatalf("cycle %d: expected count to be 0 after await, got %d", cycle, wg.n)
+			}
+		}
+	})
+}
+
+func TestWaitGroupConcurrentMix(t *testing.T) {
+	t.Run("concurrent add done await", func(t *testing.T) {
+		var wg WaitGroup
+		const workers = 50
+		const iterations = 100
+		var completed int64
+		for iter := range iterations {
+			wg.Add(workers)
+			for range workers {
+				go func() {
+					defer wg.Done()
+					atomic.AddInt64(&completed, 1)
+				}()
+			}
+			<-wg.Await()
+			expected := (iter + 1) * workers
+			if int(atomic.LoadInt64(&completed)) != expected {
+				t.Fatalf("expected %d completions, got %d", expected, atomic.LoadInt64(&completed))
+			}
+		}
+	})
+}
+
+func TestWaitGroupWaitContextDeadline(t *testing.T) {
+	t.Run("wait context deadline exceeded", func(t *testing.T) {
+		var wg WaitGroup
+		wg.Add(1)
+		defer wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+		defer cancel()
+		if err := wg.WaitContext(ctx); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected DeadlineExceeded, got %v", err)
+		}
+	})
+	t.Run("wait bubble context deadline exceeded", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var wg WaitGroup
+			wg.Add(1)
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+			defer cancel()
+			synctest.Wait()
+			if err := wg.WaitContext(ctx); !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("expected DeadlineExceeded, got %v", err)
+			}
+		})
+	})
+}
+
+func TestWaitAfterAlreadyDone(t *testing.T) {
+	t.Run("wait on zero count returns immediately", func(t *testing.T) {
+		var wg WaitGroup
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
+		select {
+		case <-done:
+			// Expected: Wait() returned
+		case <-time.After(time.Second):
+			t.Fatal("Wait() blocked on zero count")
+		}
+	})
+	t.Run("await on zero count returns closed channel", func(t *testing.T) {
+		var wg WaitGroup
+		ch := wg.Await()
+		select {
+		case <-ch:
+			// Expected: channel is closed
+		case <-time.After(time.Second):
+			t.Fatal("Await() did not return closed channel for zero count")
+		}
+	})
+	t.Run("multiple waits on zero count", func(t *testing.T) {
+		var wg WaitGroup
+		for range 5 {
+			wg.Wait()
+		}
+	})
+}
+
+func TestWaitGroupLargeCounts(t *testing.T) {
+	t.Run("large count with concurrent adds and dones", func(t *testing.T) {
+		var wg WaitGroup
+		const n = 10000
+		var added int64
+		var done int64
+		for range n {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				atomic.AddInt64(&added, 1)
+				atomic.AddInt64(&done, 1)
+			}()
+		}
+		wg.Wait()
+		if atomic.LoadInt64(&added) != n {
+			t.Fatalf("expected %d added operations, got %d", n, atomic.LoadInt64(&added))
+		}
+		if atomic.LoadInt64(&done) != n {
+			t.Fatalf("expected %d done operations, got %d", n, atomic.LoadInt64(&done))
+		}
+		if wg.n != 0 {
+			t.Fatalf("expected final count to be 0, got %d", wg.n)
+		}
+	})
+	t.Run("stress test with multiple cycles", func(t *testing.T) {
+		const cycles = 100
+		const workersPerCycle = 10
+		for c := range cycles {
+			var wg WaitGroup
+			var completed int64
+			for range workersPerCycle {
+				wg.Go(func() {
+					atomic.AddInt64(&completed, 1)
+				})
+			}
+			wg.Wait()
+			if wg.n != 0 {
+				t.Fatalf("cycle %d: expected count to be 0, got %d", c, wg.n)
+			}
+			if atomic.LoadInt64(&completed) != int64(workersPerCycle) {
+				t.Fatalf("cycle %d: expected %d completions, got %d", c, workersPerCycle, atomic.LoadInt64(&completed))
+			}
 		}
 	})
 }
