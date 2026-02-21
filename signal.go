@@ -25,14 +25,14 @@ import (
 type Signal struct {
 	mu     Mutex
 	once   sync.Once
-	sends  chan chan struct{}
+	sends  Cond
 	sendMu Mutex
 	x      chan struct{}
 }
 
 func (s *Signal) init() {
 	s.once.Do(func() {
-		s.sends = make(chan chan struct{}, 1)
+		s.sends.L = &s.mu
 	})
 }
 
@@ -43,11 +43,7 @@ func (s *Signal) Recv() <-chan struct{} {
 	defer s.mu.Unlock()
 	if s.x == nil {
 		s.x = make(chan struct{})
-		select {
-		case wake := <-s.sends:
-			close(wake)
-		default:
-		}
+		s.sends.Signal()
 	}
 	return s.x
 }
@@ -84,24 +80,8 @@ func (s *Signal) SendContext(ctx context.Context) error {
 		return err
 	}
 	for s.x == nil {
-		// clear previous wake if it exists.
-		select {
-		case <-s.sends:
-		default:
-		}
-		wake := make(chan struct{})
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case s.sends <- wake:
-		}
-		s.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-wake:
-		}
-		if err := s.mu.LockContext(ctx); err != nil {
+		s.sends.Signal() // clear previous
+		if err := s.sends.WaitContext(ctx); err != nil {
 			return err
 		}
 	}
