@@ -50,13 +50,20 @@ func (s *Signal) Recv() <-chan struct{} {
 
 // Cast will unblock all previously waiting [Signal.Recv]'s, if there were any.
 func (s *Signal) Cast() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.x == nil {
-		return
+	_ = s.CastContext(context.Background())
+}
+
+// Cast will unblock all previously waiting [Signal.Recv]'s, if there were any.
+func (s *Signal) CastContext(ctx context.Context) error {
+	if err := s.mu.LockContext(ctx); err != nil {
+		return err
 	}
-	close(s.x)
-	s.x = nil
+	defer s.mu.Unlock()
+	if s.x != nil {
+		close(s.x)
+		s.x = nil
+	}
+	return nil
 }
 
 // Send waits until at least one or more [Signal.Recv] is unblocked.
