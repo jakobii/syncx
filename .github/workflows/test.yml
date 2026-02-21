@@ -30,6 +30,9 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: 'stable'
+        # This repo has no dependencies, so we can skip caching. If go.sum is
+        # added in the future, we can remove this line to enable caching.
+        cache: false
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v9
