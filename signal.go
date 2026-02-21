@@ -48,12 +48,13 @@ func (s *Signal) Recv() <-chan struct{} {
 	return s.x
 }
 
-// Cast will unblock all previously waiting [Signal.Recv]'s, if there were any.
+// Cast is short for [Signal.CastContext].
 func (s *Signal) Cast() {
 	_ = s.CastContext(context.Background())
 }
 
-// Cast will unblock all previously waiting [Signal.Recv]'s, if there were any.
+// CastContext will unblock all previously waiting [Signal.Recv]'s, if there
+// were any or return the ctx error.
 func (s *Signal) CastContext(ctx context.Context) error {
 	if err := s.mu.LockContext(ctx); err != nil {
 		return err
