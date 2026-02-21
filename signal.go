@@ -1,28 +1,33 @@
 package syncx
 
-import "sync"
+import (
+	"context"
+	"sync"
+	"time"
+)
 
-// Signal is a reusable notifier. It wake one or more goroutines.
+// Signal is a reusable notifier. It wakes one or more goroutines.
 //
 // A Signal can be used to nudge workers to re-check some shared state:
 //
 //	var sig syncx.Signal
 //	go func() {
-//		for {
-//			select {
-//			case <-ctx.Done():
-//				return
-//			case <-sig.Recv():
-//				// check shared state or retry work
-//			}
-//		}
+//	    for {
+//	        select {
+//	        case <-ctx.Done():
+//	            return
+//	        case <-sig.Recv():
+//	            // check shared state or retry work
+//	        }
+//	    }
 //	}()
 //	sig.Send()
 type Signal struct {
-	mu    sync.Mutex
-	once  sync.Once
-	sends chan chan struct{}
-	x     chan struct{}
+	mu     Mutex
+	once   sync.Once
+	sends  chan chan struct{}
+	sendMu Mutex
+	x      chan struct{}
 }
 
 func (s *Signal) init() {
@@ -31,7 +36,7 @@ func (s *Signal) init() {
 	})
 }
 
-// Recv will block until signaled by [Signal.Send].
+// Recv will block until signaled by [Signal.Send] or [Signal.Cast].
 func (s *Signal) Recv() <-chan struct{} {
 	s.init()
 	s.mu.Lock()
@@ -47,23 +52,7 @@ func (s *Signal) Recv() <-chan struct{} {
 	return s.x
 }
 
-// Send blocks until one or more [Signal.Recv] is unblocked.
-func (s *Signal) Send() {
-	s.init()
-	s.mu.Lock()
-	for s.x == nil {
-		wake := make(chan struct{})
-		s.mu.Unlock()
-		s.sends <- wake
-		<-wake
-		s.mu.Lock()
-	}
-	defer s.mu.Unlock()
-	close(s.x)
-	s.x = nil
-}
-
-// Cast will unblock all [Signal.Recv], if there is one.
+// Cast will unblock all previously waiting [Signal.Recv]'s, if there were any.
 func (s *Signal) Cast() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -72,4 +61,52 @@ func (s *Signal) Cast() {
 	}
 	close(s.x)
 	s.x = nil
+}
+
+// Send waits until at least one or more [Signal.Recv] is unblocked.
+func (s *Signal) Send() {
+	_ = s.SendContext(context.Background())
+}
+
+func (s *Signal) SendTimeout(d time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	defer cancel()
+	return s.SendContext(ctx)
+}
+
+func (s *Signal) SendContext(ctx context.Context) error {
+	s.init()
+	if err := s.sendMu.LockContext(ctx); err != nil {
+		return err
+	}
+	defer s.sendMu.Unlock()
+	if err := s.mu.LockContext(ctx); err != nil {
+		return err
+	}
+	for s.x == nil {
+		// clear previous wake if it exists.
+		select {
+		case <-s.sends:
+		default:
+		}
+		wake := make(chan struct{})
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case s.sends <- wake:
+		}
+		s.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-wake:
+		}
+		if err := s.mu.LockContext(ctx); err != nil {
+			return err
+		}
+	}
+	defer s.mu.Unlock()
+	close(s.x)
+	s.x = nil
+	return nil
 }
