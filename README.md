@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **syncx has moved to [github.com/jakobii/sink](https://github.com/jakobii/sink).** This repository is archived and will not receive updates.
+> Migrate with `go get github.com/jakobii/sink` and replace imports of `github.com/jakobii/syncx` with `github.com/jakobii/sink` (package `syncx` is now `sink`).
+
 # syncx
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/jakobii/syncx.svg)](https://pkg.go.dev/github.com/jakobii/syncx)
